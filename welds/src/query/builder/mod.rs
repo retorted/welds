@@ -359,6 +359,12 @@ where
         sb.select_as(lam, as_name)
     }
 
+    /// Select all columns, equivalent to `SELECT table_name.*`
+    pub fn select_all(self) -> SelectBuilder<T> {
+        let sb = SelectBuilder::new(self);
+        sb.select_all()
+    }
+
     /// Changes this query Into a sql UPDATE.
     /// Sets the value from the lambda in the database
     ///

@@ -1,6 +1,7 @@
 use crate::model_traits::{HasSchema, TableColumns, TableInfo, UniqueIdentifier};
 use crate::query::builder::QueryBuilder;
 use crate::query::clause::{AsFieldName, ClauseAdder};
+use crate::query::select_cols::select_column::SelectKind;
 use crate::relations::{HasRelations, Relationship};
 use crate::writers::alias::TableAlias;
 pub use join::Join;
@@ -49,6 +50,17 @@ where
         self.selects.push(SelectColumn {
             col_name: field.colname().to_string(),
             field_name: field.fieldname().to_string(),
+            kind: SelectKind::Column,
+        });
+        self
+    }
+
+    /// Select all columns, equivalent to `SELECT table_name.*`
+    pub fn select_all(mut self) -> SelectBuilder<T> {
+        self.selects.push(SelectColumn {
+            col_name: Default::default(),
+            field_name: Default::default(),
+            kind: SelectKind::All,
         });
         self
     }
@@ -65,6 +77,7 @@ where
         self.selects.push(SelectColumn {
             col_name: field.colname().to_string(),
             field_name: as_name.to_string(),
+            kind: SelectKind::Column,
         });
         self
     }

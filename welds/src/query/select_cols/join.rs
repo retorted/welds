@@ -3,6 +3,7 @@ use super::SelectColumn;
 use crate::model_traits::{HasSchema, TableInfo};
 use crate::query::clause::ClauseAdder;
 use crate::query::clause::ParamArgs;
+use crate::query::select_cols::select_column::SelectKind;
 use crate::writers::alias::TableAlias;
 use crate::writers::ColumnWriter;
 use crate::writers::NextParam;
@@ -53,12 +54,19 @@ impl JoinBuilder {
         for col in &self.selects {
             let colname = writer.excape(&col.col_name);
             let fieldname = writer.excape(&col.field_name);
-            if colname == fieldname {
-                let col = format!("{}.{}", alias, colname);
-                list.push(col);
-            } else {
-                let col = format!("{}.{} AS {}", alias, colname, fieldname);
-                list.push(col);
+            match col.kind {
+                SelectKind::Column => {
+                    if colname == fieldname {
+                        let col = format!("{}.{}", alias, colname);
+                        list.push(col);
+                    } else {
+                        let col = format!("{}.{} AS {}", alias, colname, fieldname);
+                        list.push(col);
+                    }
+                }
+                SelectKind::All => {
+                    list.push(format!("{}.*", alias));
+                }
             }
         }
         for sub in &self.subs {
