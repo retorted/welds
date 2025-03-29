@@ -1,4 +1,4 @@
-use sqlite_test::models::order::{self, Order, SmallOrder};
+use sqlite_test::models::order::{Order, SmallOrder};
 use sqlite_test::models::product::{BadProduct1, BadProduct2, Product};
 use sqlite_test::models::StringThing;
 use sqlite_test::models::{Thing1, Thing2, Thing3};
@@ -9,7 +9,9 @@ use welds::Syntax;
 
 pub mod bulk_delete;
 pub mod bulk_update;
+pub mod callbacks;
 pub mod extra_types;
+pub mod includes;
 pub mod migrations;
 pub mod select_col;
 pub mod sub_query_tests;
@@ -245,8 +247,8 @@ fn should_be_able_to_create_a_new_product() {
 fn should_be_able_to_scan_for_all_tables() {
     async_std::task::block_on(async {
         let conn = get_conn().await;
-        let tables = welds::detect::find_tables(&conn).await.unwrap();
-        assert_eq!(14, tables.len());
+        let tables = welds::detect::find_all_tables(&conn).await.unwrap();
+        assert_eq!(19, tables.len());
     })
 }
 
@@ -503,3 +505,92 @@ fn should_be_able_to_write_a_custom_set2() {
         q.run(&conn).await.unwrap();
     })
 }
+
+#[test]
+fn should_be_able_to_filter_by_multiple_values() {
+    async_std::task::block_on(async {
+        let conn = get_conn().await;
+        let query = Product::all().where_col(|p| p.id.in_list(&[2, 3, 4]));
+        let results = query.run(&conn).await.unwrap();
+        assert_eq!(results.len(), 3);
+        let query = Product::all().where_col(|p| p.name.in_list(&["cat", "dog"]));
+        let results = query.run(&conn).await.unwrap();
+        assert_eq!(results.len(), 2);
+    })
+}
+
+#[test]
+fn should_be_able_to_select_all_products_with_there_orders() {
+    async_std::task::block_on(async {
+        let conn = get_conn().await;
+        let query = Product::all().include(|x| x.orders).order_by_asc(|x| x.id);
+        let products = query.run(&conn).await.unwrap();
+
+        // first product has 2 orders
+        let p1 = products.get(0).unwrap();
+        let p1_orders = p1.get(|x| x.orders);
+        assert_eq!(p1_orders.len(), 2);
+
+        // second product has 1 orders
+        let p2 = products.get(1).unwrap();
+        let p2_orders = p2.get(|x| x.orders);
+        assert_eq!(p2_orders.len(), 1);
+
+        // third product has 0 orders
+        let p3 = products.get(2).unwrap();
+        let p3_orders = p3.get(|x| x.orders);
+        assert_eq!(p3_orders.len(), 0);
+    })
+}
+
+#[test]
+fn should_be_able_to_select_all_orders_with_there_products() {
+    async_std::task::block_on(async {
+        let conn = get_conn().await;
+        let query = Order::all().include(|x| x.product).order_by_asc(|x| x.id);
+        let orders = query.run(&conn).await.unwrap();
+
+        // From the test data:
+        // order 1 and 2 point to product 1
+        // order 3 point to product 2
+        let o1 = orders.get(0).unwrap();
+        let o1_products = o1.get(|x| x.product);
+        assert_eq!(o1_products.len(), 1);
+        assert_eq!(o1_products[0].id, 1);
+
+        let o2 = orders.get(1).unwrap();
+        let o2_products = o2.get(|x| x.product);
+        assert_eq!(o2_products.len(), 1);
+        assert_eq!(o2_products[0].id, 1);
+
+        let o3 = orders.get(2).unwrap();
+        let o3_products = o3.get(|x| x.product);
+        assert_eq!(o3_products.len(), 1);
+        assert_eq!(o3_products[0].id, 2);
+    })
+}
+
+#[test]
+fn should_be_able_to_fetch_a_single_object() {
+    async_std::task::block_on(async {
+        let conn = get_conn().await;
+        let result: DbState<Product> = Product::where_col(|p| p.id.gt(1))
+            .fetch_one(&conn)
+            .await
+            .unwrap();
+    })
+}
+
+//#[test]
+//fn should_be_able_to_join_limit_and_order_all_at_once() {
+//    async_std::task::block_on(async {
+//        let conn = get_conn().await;
+//        let q = Product::all().select(|x| x.id).join(
+//            |x| x.orders,
+//            Order::all()
+//                .select(|o| o.id)
+//                .limit(1)
+//                .order_by_asc(|o| o.id),
+//        );
+//    })
+//}

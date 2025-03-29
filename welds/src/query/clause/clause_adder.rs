@@ -1,4 +1,4 @@
-use super::{ClauseColManual, ClauseColVal, ClauseColValEqual, ClauseColValList};
+use super::{ClauseColManual, ClauseColVal, ClauseColValEqual, ClauseColValIn, ClauseColValList};
 use super::{Param, ParamArgs};
 use crate::writers::NextParam;
 use crate::Syntax;
@@ -30,7 +30,7 @@ where
         }
     }
 
-    fn clause(&self, _syntax: Syntax, alias: &str, next_params: &NextParam) -> Option<String> {
+    fn clause(&self, syntax: Syntax, alias: &str, next_params: &NextParam) -> Option<String> {
         // build the column name
         let col = format!("{}.{}", alias, self.col);
         let mut parts = vec![col.as_str()];
@@ -46,8 +46,22 @@ where
             return Some(clause);
         }
 
+        // override the "ilike" operator for sqlite
+        let operator = match syntax {
+            Syntax::Sqlite => {
+                if self.operator == "ilike" {
+                    "like"
+                } else if self.operator == "not ilike" {
+                    "not like"
+                } else {
+                    self.operator
+                }
+            }
+            _ => self.operator,
+        };
+
         // normal path
-        parts.push(self.operator);
+        parts.push(operator);
         let np = next_params.next();
         parts.push(&np);
         let clause: String = parts.join(" ");
@@ -117,6 +131,39 @@ where
         parts.push("(");
         parts.push(&np);
         parts.push(")");
+        let clause: String = parts.join("");
+        Some(clause)
+    }
+}
+
+impl<T> ClauseAdder for ClauseColValIn<T>
+where
+    T: Clone + Send + Sync + Param,
+{
+    fn bind<'lam, 'args, 'p>(&'lam self, args: &'args mut ParamArgs<'p>)
+    where
+        'lam: 'p,
+    {
+        for item in &self.list {
+            args.push(item);
+        }
+    }
+
+    fn clause(&self, _syntax: Syntax, alias: &str, next_params: &NextParam) -> Option<String> {
+        let col = format!("{}.{}", alias, self.col);
+        let mut parts = vec![col];
+
+        parts.push(" ".to_string());
+        parts.push(self.operator.to_string());
+        parts.push(" ".to_string());
+        parts.push("(".to_string());
+        for (i, _in) in self.list.iter().enumerate() {
+            if i > 0 {
+                parts.push(",".to_string())
+            }
+            parts.push(next_params.next());
+        }
+        parts.push(")".to_string());
         let clause: String = parts.join("");
         Some(clause)
     }

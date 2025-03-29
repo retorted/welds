@@ -16,7 +16,7 @@ struct Product {
 
 impl TryFrom<Row> for Product {
     type Error = crate::WeldsError;
-    fn try_from(value: Row) -> std::result::Result<Self, Self::Error> {
+    fn try_from(_value: Row) -> std::result::Result<Self, Self::Error> {
         Ok(Product { a: 0, b: 0 })
     }
 }
@@ -70,7 +70,7 @@ fn should_order_by_asc() {
     })
     .unwrap();
     assert_eq!(
-        "SELECT t1.\"a\", t1.\"b\" FROM nums t1 ORDER BY a ASC",
+        "SELECT t1.\"a\", t1.\"b\" FROM nums t1 ORDER BY t1.a ASC",
         &ran_sql
     );
 }
@@ -87,7 +87,7 @@ fn should_order_by_two_columns() {
     })
     .unwrap();
     assert_eq!(
-        "SELECT t1.\"a\", t1.\"b\" FROM nums t1 ORDER BY a ASC, b DESC",
+        "SELECT t1.\"a\", t1.\"b\" FROM nums t1 ORDER BY t1.a ASC, t1.b DESC",
         &ran_sql
     );
 }

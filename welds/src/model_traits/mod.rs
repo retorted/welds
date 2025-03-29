@@ -3,6 +3,9 @@
 /// ***********************************************************************************
 pub mod hooks;
 
+#[cfg(test)]
+mod tests;
+
 /// tells welds what tablename and schema name should used to get data for an Entity
 /// This does on the Schema Object NOT the model
 pub trait TableInfo {
@@ -73,6 +76,7 @@ pub trait ColumnDefaultCheck {
     fn col_is_default(&self, column: &str) -> Result<bool>;
 }
 
+/// Update self from the contents of a row
 pub trait UpdateFromRow {
     fn update_from_row(&mut self, row: &mut crate::Row) -> crate::errors::Result<()>;
 }
@@ -80,6 +84,20 @@ pub trait UpdateFromRow {
 /// Used to link a models schema to the model
 pub trait HasSchema: Sync + Send {
     type Schema: Default + TableInfo;
+}
+
+/// Returns the Value of the PK of a model
+pub trait PrimaryKeyValue {
+    type PrimaryKeyType;
+    /// Returns the value of a model's primary key(s)
+    fn primary_key_value(&self) -> Self::PrimaryKeyType;
+}
+
+/// Used to check if a Foreign Key is equal to a value
+pub trait ForeignKeyPartialEq<Rhs> {
+    /// return true if the Foreign Key value equals the passed in value
+    /// false if the values don't match OR object doesn't have the column
+    fn eq(&self, foreign_key_column: &str, other: &Rhs) -> bool;
 }
 
 mod tableident;

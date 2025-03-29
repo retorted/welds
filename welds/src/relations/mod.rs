@@ -1,69 +1,20 @@
 use crate::model_traits::UniqueIdentifier;
-use std::marker::PhantomData;
 
-pub struct BelongsTo<T> {
-    _t: PhantomData<T>,
-    foreign_key: &'static str,
-}
+mod belongsto;
+pub use belongsto::BelongsTo;
 
-impl<T> BelongsTo<T> {
-    pub fn using(fk: &'static str) -> BelongsTo<T> {
-        BelongsTo {
-            _t: Default::default(),
-            foreign_key: fk,
-        }
-    }
-}
+mod hasmany;
+pub use hasmany::HasMany;
 
-impl<R> Relationship<R> for BelongsTo<R> {
-    fn my_key<ME, THEM>(&self) -> String
-    where
-        ME: UniqueIdentifier,
-        THEM: UniqueIdentifier,
-    {
-        self.foreign_key.to_owned()
-    }
-    fn their_key<ME, THEM>(&self) -> String
-    where
-        ME: UniqueIdentifier,
-        THEM: UniqueIdentifier,
-    {
-        ME::id_column().name().to_owned()
-    }
-}
+mod hasone;
+pub use hasone::HasOne;
 
-pub struct HasMany<T> {
-    _t: PhantomData<T>,
-    foreign_key: &'static str,
-}
+mod belongstoone;
+pub use belongstoone::BelongsToOne;
 
-impl<T> HasMany<T> {
-    pub fn using(fk: &'static str) -> HasMany<T> {
-        HasMany {
-            _t: Default::default(),
-            foreign_key: fk,
-        }
-    }
-}
-
-impl<R> Relationship<R> for HasMany<R> {
-    fn my_key<ME, THEM>(&self) -> String
-    where
-        ME: UniqueIdentifier,
-        THEM: UniqueIdentifier,
-    {
-        THEM::id_column().name().to_owned()
-    }
-    fn their_key<ME, THEM>(&self) -> String
-    where
-        ME: UniqueIdentifier,
-        THEM: UniqueIdentifier,
-    {
-        self.foreign_key.to_owned()
-    }
-}
-
-pub trait Relationship<R> {
+/// Describes how a relationship should be wired up.
+/// Gives info about what DB columns to use on both Models
+pub trait Relationship<R>: Clone + PartialEq + Send {
     fn their_key<R2, T>(&self) -> String
     where
         T: UniqueIdentifier,
@@ -73,6 +24,15 @@ pub trait Relationship<R> {
     where
         T: UniqueIdentifier,
         R2: UniqueIdentifier;
+}
+
+/// Used to check if a relationship holds between two models.
+pub trait RelationshipCompare<T, R>
+where
+    Self: Relationship<R>,
+{
+    // return true if the source object is linked to the other object via a the given relationship
+    fn is_related(&self, source: &T, other: &R) -> bool;
 }
 
 pub trait HasRelations {

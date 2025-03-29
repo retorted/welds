@@ -1,7 +1,11 @@
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/weldsorm/welds/main/page/src/assets/images/banner.png"/>
-  <h3>An async ORM written in rust using sqlx and/or Tiberius.</h3>
+  <h3>
+    An async ORM written in rust using sqlx and/or Tiberius
+    <a href="https://crates.io/crates/welds"><img alt="crate" src="https://img.shields.io/badge/crates.io-latest-blue"></a>
+    <a href="https://docs.rs/welds/latest/welds/"><img alt="docs" src="https://img.shields.io/badge/docs.rs-latest-blue"></a>
+  </h3>
 </div>
 
 
@@ -99,12 +103,11 @@ welds-connections features needed for mssql (tiberius):
  - [Mapping Queries / Joining](https://github.com/weldsorm/welds/blob/main/welds/examples/crud.rs)
  - [Bulk (Create/Update/Delete)](https://github.com/weldsorm/welds/blob/main/welds/examples/bulk_operations.rs)
  - [Select Only Specific Columns](https://github.com/weldsorm/welds/blob/main/welds/examples/manual_select_columns.rs)
+ - [Fetch related objects with include](https://github.com/weldsorm/welds/blob/main/welds/examples/includes.rs)
  - [Hooks, Callback when models (Save/Update/Delete)](https://github.com/weldsorm/welds/blob/main/welds/examples/hooks.rs)
  - [Scopes for your Models](https://github.com/weldsorm/welds/blob/main/welds/examples/scopes.rs)
  - [Migrations](https://github.com/weldsorm/welds/blob/main/welds/examples/migrations.rs)
+ - [Wrapping operations in Transactions](https://github.com/weldsorm/welds/blob/main/welds/examples/transactions.rs)
  - [Checking DB schema matches compiled structs](https://github.com/weldsorm/welds/blob/main/welds/examples/verify_tables.rs)
 
 For more good examples [check out the examples repo](https://github.com/weldsorm/welds/tree/main/welds/examples).
-
-
-

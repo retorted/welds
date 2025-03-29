@@ -7,17 +7,17 @@ pub(crate) struct Relation {
     pub(crate) kind: Ident,
     pub(crate) field: Ident,
     pub(crate) foreign_struct: syn::Path,
-    pub(crate) foreign_key: String,
+    // the field name of the FK in the DB
+    pub(crate) foreign_key_db: String,
 }
 
 impl Relation {
     pub(crate) fn new(list: &MetaList, kind: &'static str) -> Result<Self> {
-        let badformat = || {
-            if kind == "BelongsTo" {
-                Err(FORMAT_ERR_BELONGS_TO.to_owned())
-            } else {
-                Err(FORMAT_ERR_HAS_MANY.to_owned())
-            }
+        let badformat = || match kind {
+            "BelongsTo" => Err(FORMAT_ERR_BELONGS_TO.to_owned()),
+            "HasMany" => Err(FORMAT_ERR_HAS_MANY.to_owned()),
+            "BelongsToOne" => Err(FORMAT_ERR_BELONGS_TO_ONE.to_owned()),
+            _ => Err(FORMAT_ERR_HAS_ONE.to_owned()),
         };
 
         let inner: Vec<_> = list.nested.iter().collect();
@@ -63,7 +63,7 @@ impl Relation {
             kind,
             field,
             foreign_struct: model.clone(),
-            foreign_key,
+            foreign_key_db: foreign_key.clone(),
         })
     }
 }
@@ -71,6 +71,14 @@ impl Relation {
 const FORMAT_ERR_HAS_MANY: &str = "Invalid Format For HasMany:
 HasMany should be in for format of
 [ welds(HasMany(field, struct, foreign_key_str) )]";
+
+const FORMAT_ERR_HAS_ONE: &str = "Invalid Format For HasOne:
+HasOne should be in for format of
+[ welds(HasOne(field, struct, foreign_key_str) )]";
+
+const FORMAT_ERR_BELONGS_TO_ONE: &str = "Invalid Format For BelongsToOne:
+BelongsToOne should be in for format of
+[ welds(BelongsToOne(field, struct, foreign_key_str) )]";
 
 const FORMAT_ERR_BELONGS_TO: &str = "Invalid Format For BelongsTo:
 BelongsTo should be in for format of

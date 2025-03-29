@@ -4,6 +4,7 @@ pub use super::update::bulk::UpdateBuilder;
 use crate::model_traits::{HasSchema, TableColumns, TableInfo, UniqueIdentifier};
 use crate::query::clause::exists::ExistIn;
 use crate::query::clause::{AsFieldName, AssignmentAdder, ClauseAdder, OrderBy};
+use crate::query::include::IncludeBuilder;
 use crate::relations::{HasRelations, Relationship};
 use crate::writers::alias::TableAlias;
 use std::marker::PhantomData;
@@ -15,6 +16,9 @@ pub use super::clause::manualparam::ManualParam;
 #[deprecated(note = "please use `ManualParam` instead")]
 pub type ManualWhereParam = ManualParam;
 
+#[cfg(test)]
+mod tests;
+
 /// An un-executed Query.
 ///
 /// Build out a query that can be executed on the database.
@@ -24,13 +28,28 @@ pub type ManualWhereParam = ManualParam;
 /// Can be mapped into other queries to  make more complex queries.
 pub struct QueryBuilder<T> {
     _t: PhantomData<T>,
-    pub(crate) wheres: Vec<Box<dyn ClauseAdder>>,
+    pub(crate) wheres: Vec<Arc<Box<dyn ClauseAdder>>>,
     pub(crate) exist_ins: Vec<ExistIn>,
     pub(crate) limit: Option<i64>,
     pub(crate) offset: Option<i64>,
     pub(crate) orderby: Vec<OrderBy>,
     pub(crate) alias: String,
     pub(crate) alias_asigner: Arc<TableAlias>,
+}
+
+impl<T> Clone for QueryBuilder<T> {
+    fn clone(&self) -> Self {
+        Self {
+            _t: Default::default(),
+            wheres: self.wheres.clone(),
+            limit: self.limit,
+            offset: self.offset,
+            orderby: self.orderby.clone(),
+            exist_ins: self.exist_ins.clone(),
+            alias: self.alias.clone(),
+            alias_asigner: self.alias_asigner.clone(),
+        }
+    }
 }
 
 impl<T> Default for QueryBuilder<T>
@@ -87,7 +106,7 @@ where
         <T as HasSchema>::Schema: Default,
     {
         let qba = lam(Default::default());
-        self.wheres.push(qba);
+        self.wheres.push(Arc::new(qba));
         self
     }
 
@@ -137,7 +156,7 @@ where
             sql: sql.to_string(),
             params: params.into_inner(),
         };
-        self.wheres.push(Box::new(c));
+        self.wheres.push(Arc::new(Box::new(c)));
         self
     }
 
@@ -177,7 +196,7 @@ where
             sql: sql.to_string(),
             params: params.into_inner(),
         };
-        self.wheres.push(Box::new(c));
+        self.wheres.push(Arc::new(Box::new(c)));
         self
     }
 
@@ -202,7 +221,7 @@ where
         let inner_tn = <R as HasSchema>::Schema::identifier();
         let inner_tn = inner_tn.join(".");
         let inner_col = ship.their_key::<R::Schema, T::Schema>();
-        let mut exist_in = ExistIn::new(filter, out_col, inner_tn, inner_col);
+        let mut exist_in = ExistIn::new(&filter, out_col, inner_tn, inner_col);
         exist_in.set_aliases(&self.alias_asigner);
         self.exist_ins.push(exist_in);
         self
@@ -210,7 +229,7 @@ where
 
     /// Results in a query that is mapped into the query of one of its relationships
     pub fn map_query<R, Ship>(
-        self,
+        &self,
         relationship: impl Fn(<T as HasRelations>::Relation) -> Ship,
     ) -> QueryBuilder<R>
     where
@@ -456,5 +475,28 @@ where
     {
         let ub = UpdateBuilder::new(self);
         ub.set_manual(lam, sql, params)
+    }
+
+    /// Include an other related to this one. `BelongsTo` `HasMany`.
+    /// querying will continue over your current Object, but the related object will be
+    /// accessible in the resulting dataset off of each instance of your model
+    pub fn include<R, Ship>(
+        self,
+        relationship: impl Fn(<T as HasRelations>::Relation) -> Ship,
+    ) -> IncludeBuilder<T>
+    where
+        T: 'static + HasRelations,
+        Ship: 'static + Sync + Relationship<R>,
+        R: HasSchema,
+        R: 'static,
+        R: Send + Sync + HasSchema,
+        <R as HasSchema>::Schema: TableInfo + TableColumns + UniqueIdentifier,
+        <T as HasSchema>::Schema: TableInfo + TableColumns + UniqueIdentifier,
+        <T as HasRelations>::Relation: Default,
+        R: TryFrom<crate::connections::Row>,
+        crate::errors::WeldsError: From<<R as TryFrom<crate::connections::Row>>::Error>,
+    {
+        let ib = IncludeBuilder::new(self);
+        ib.include(relationship)
     }
 }

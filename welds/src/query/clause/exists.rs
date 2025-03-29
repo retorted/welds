@@ -8,12 +8,13 @@ use crate::Syntax;
 use std::sync::Arc;
 
 /// Used to generated a SQL EXISTS OR IN clause for writing sub-queries
+#[derive(Clone)]
 pub struct ExistIn {
     outer_column: String,
     inner_column: String,
     inner_tablename: String,
     pub(crate) inner_tablealias: String,
-    wheres: Vec<Box<dyn ClauseAdder>>,
+    wheres: Vec<Arc<Box<dyn ClauseAdder>>>,
     inner_exists_ins: Vec<Self>,
     limit: Option<i64>,
     offset: Option<i64>,
@@ -22,7 +23,7 @@ pub struct ExistIn {
 
 impl ExistIn {
     pub(crate) fn new<T>(
-        sb: QueryBuilder<T>,
+        sb: &QueryBuilder<T>,
         outer_column: String,
         inner_tablename: String,
         inner_column: String,
@@ -31,12 +32,12 @@ impl ExistIn {
             outer_column,
             inner_column,
             inner_tablename,
-            inner_tablealias: sb.alias,
-            wheres: sb.wheres,
-            inner_exists_ins: sb.exist_ins,
+            inner_tablealias: sb.alias.clone(),
+            wheres: sb.wheres.clone(),
+            inner_exists_ins: sb.exist_ins.clone(),
             limit: sb.limit,
             offset: sb.offset,
-            orderby: sb.orderby,
+            orderby: sb.orderby.clone(),
         }
     }
 
@@ -55,13 +56,14 @@ impl ExistIn {
         )
     }
 
-    fn tails(&self, syntax: Syntax) -> String {
+    fn tails(&self, syntax: Syntax, tablealias: &str) -> String {
         use crate::query::tail;
-        tail::write(syntax, &self.limit, &self.offset, &self.orderby).unwrap_or_default()
+        tail::write(syntax, &self.limit, &self.offset, &self.orderby, tablealias)
+            .unwrap_or_default()
     }
 
     fn exists_clause(&self, syntax: Syntax, _tablealias: &str, inner_clauses: &str) -> String {
-        let tails = self.tails(syntax);
+        let tails = self.tails(syntax, &self.inner_tablealias);
         format!(
             "EXISTS ( SELECT {} FROM {} {} WHERE {} {})",
             self.inner_column, self.inner_tablename, self.inner_tablealias, inner_clauses, tails
@@ -71,7 +73,7 @@ impl ExistIn {
     fn in_clause(&self, syntax: Syntax, tablealias: &str, inner_clauses: &str) -> String {
         let outcol = format!("{}.{}", tablealias, self.outer_column);
         let innercol = format!("{}.{}", self.inner_tablealias, self.inner_column);
-        let tails = self.tails(syntax);
+        let tails = self.tails(syntax, &self.inner_tablealias);
         let mut wheres = "".to_string();
         if !inner_clauses.is_empty() {
             wheres = format!("WHERE {}", inner_clauses);

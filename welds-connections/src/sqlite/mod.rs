@@ -1,6 +1,6 @@
 use super::transaction::{TransT, Transaction};
-use super::Row;
 use super::TransactStart;
+use super::{trace, Row};
 use super::{Client, Param};
 use crate::errors::Result;
 use crate::ExecuteResult;
@@ -10,6 +10,7 @@ use sqlx::sqlite::SqliteArguments;
 use sqlx::{Sqlite, SqlitePool};
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct SqliteClient {
     pool: Arc<SqlitePool>,
 }
@@ -50,22 +51,24 @@ use sqlx::types::Type;
 #[async_trait]
 impl Client for SqliteClient {
     async fn execute(&self, sql: &str, params: &[&(dyn Param + Sync)]) -> Result<ExecuteResult> {
+        log::trace!("SQLITE EXECUTE: {}", sql);
         let mut query = sqlx::query::<Sqlite>(sql);
         for param in params {
             query = SqliteParam::add_param(*param, query);
         }
-        let r = query.execute(&*self.pool).await?;
+        let r = trace::db_error(query.execute(&*self.pool).await)?;
         Ok(ExecuteResult {
             rows_affected: r.rows_affected(),
         })
     }
 
     async fn fetch_rows(&self, sql: &str, params: &[&(dyn Param + Sync)]) -> Result<Vec<Row>> {
+        log::trace!("SQLITE FETCH_ROWS: {}", sql);
         let mut query = sqlx::query::<Sqlite>(sql);
         for param in params {
             query = SqliteParam::add_param(*param, query);
         }
-        let mut raw_rows = query.fetch_all(&*self.pool).await?;
+        let mut raw_rows = trace::db_error(query.fetch_all(&*self.pool).await)?;
         let rows: Vec<Row> = raw_rows.drain(..).map(Row::from).collect();
         Ok(rows)
     }
@@ -78,12 +81,13 @@ impl Client for SqliteClient {
         let mut conn = self.pool.acquire().await?;
         for fetch in fetches {
             let sql = fetch.sql;
+            log::trace!("SQLITE FETCH_MANY: {}", sql);
             let params = fetch.params;
             let mut query = sqlx::query::<Sqlite>(sql);
             for param in params {
                 query = SqliteParam::add_param(*param, query);
             }
-            let mut raw_rows = query.fetch_all(&mut *conn).await?;
+            let mut raw_rows = trace::db_error(query.fetch_all(&mut *conn).await)?;
             let rows: Vec<Row> = raw_rows.drain(..).map(Row::from).collect();
             datasets.push(rows);
         }
