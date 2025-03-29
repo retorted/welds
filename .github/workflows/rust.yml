@@ -10,8 +10,17 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test_path:
+          - ./
+          - ./tests
+          - ./tests/mssql
+          - ./tests/mysql
+          - ./tests/postgres
+          - ./tests/sqlite
     steps:
     - uses: actions/checkout@v4
     - uses: actions/cache@v4
@@ -24,17 +33,6 @@ jobs:
           target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: ${{ runner.os }}-cargo-registry-
-    - name: Run workspace tests
+    - name: Run tests ${{ matrix.test_path }}
+      working-directory: ${{ matrix.test_path }}
       run: cargo test
-    - name: Run mssql tests
-      working-directory: ./tests/mssql
-      run: cargo test
-    - name: Run mysql tests
-      working-directory: ./tests/mysql
-      run: cargo test  
-    - name: Run postgres tests
-      working-directory: ./tests/postgres
-      run: cargo test  
-    - name: Run sqlite tests
-      working-directory: ./tests/sqlite
-      run: cargo test    
