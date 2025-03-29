@@ -15,7 +15,6 @@ jobs:
     strategy:
       matrix:
         test_path:
-          - ./
           - ./tests
           - ./tests/mssql
           - ./tests/mysql
