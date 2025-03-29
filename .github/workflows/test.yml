@@ -31,7 +31,7 @@ jobs:
           ~/.cargo/git/db/
           target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: ${{ runner.os }}-cargo-registry-
+        restore-keys: ${{ runner.os }}-cargo-
     - name: Run tests ${{ matrix.test_path }}
       working-directory: ${{ matrix.test_path }}
       run: cargo test
