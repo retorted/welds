@@ -168,7 +168,7 @@ async fn execute_inner(
         #[cfg(feature = "sqlite")]
         TransT::Sqlite(t) => {
             let x: &mut <sqlx::Sqlite as sqlx::Database>::Connection = t;
-            let mut query = sqlx::query::<sqlx::Sqlite>(sql);
+            let mut query = sqlx::query::<sqlx::Sqlite>(sqlx::AssertSqlSafe(sql));
             for param in params {
                 query = SqliteParam::add_param(*param, query)
             }
@@ -181,7 +181,7 @@ async fn execute_inner(
         #[cfg(feature = "postgres")]
         TransT::Postgres(t) => {
             let x: &mut <sqlx::Postgres as sqlx::Database>::Connection = t;
-            let mut query = sqlx::query::<sqlx::Postgres>(sql);
+            let mut query = sqlx::query::<sqlx::Postgres>(sqlx::AssertSqlSafe(sql));
             for param in params {
                 query = PostgresParam::add_param(*param, query)
             }
@@ -194,7 +194,7 @@ async fn execute_inner(
         #[cfg(feature = "mysql")]
         TransT::Mysql(t) => {
             let x: &mut <sqlx::MySql as sqlx::Database>::Connection = t;
-            let mut query = sqlx::query::<sqlx::MySql>(sql);
+            let mut query = sqlx::query::<sqlx::MySql>(sqlx::AssertSqlSafe(sql));
             for param in params {
                 query = MysqlParam::add_param(*param, query)
             }
@@ -224,7 +224,7 @@ async fn fetch_rows_inner(
         #[cfg(feature = "sqlite")]
         TransT::Sqlite(t) => {
             let x: &mut <sqlx::Sqlite as sqlx::Database>::Connection = t;
-            let mut query = sqlx::query::<sqlx::Sqlite>(sql);
+            let mut query = sqlx::query::<sqlx::Sqlite>(sqlx::AssertSqlSafe(sql));
             for param in params {
                 query = SqliteParam::add_param(*param, query)
             }
@@ -232,11 +232,10 @@ async fn fetch_rows_inner(
             let rows: Vec<Row> = raw_rows.drain(..).map(Row::from).collect();
             Ok(rows)
         }
-
         #[cfg(feature = "postgres")]
         TransT::Postgres(t) => {
             let x: &mut <sqlx::Postgres as sqlx::Database>::Connection = t;
-            let mut query = sqlx::query::<sqlx::Postgres>(sql);
+            let mut query = sqlx::query::<sqlx::Postgres>(sqlx::AssertSqlSafe(sql));
             for param in params {
                 query = PostgresParam::add_param(*param, query)
             }
@@ -248,7 +247,7 @@ async fn fetch_rows_inner(
         #[cfg(feature = "mysql")]
         TransT::Mysql(t) => {
             let x: &mut <sqlx::MySql as sqlx::Database>::Connection = t;
-            let mut query = sqlx::query::<sqlx::MySql>(sql);
+            let mut query = sqlx::query::<sqlx::MySql>(sqlx::AssertSqlSafe(sql));
             for param in params {
                 query = MysqlParam::add_param(*param, query)
             }
